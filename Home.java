@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.table.DefaultTableModel;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -1256,101 +1257,79 @@ public class Home extends javax.swing.JFrame {
         }
     }
     
-    private void cargarEstadisticas(){
-        
-        //Variables de conexion
-        PreparedStatement ps;
-        ResultSet rs;
-        
-        //Variables JCmoboBox
-        String txtCarrera;
-        String txtSemestre;
-        int indiceCarrera;
-        int indiceSemestre;
-        
-        //Contadores
-        int[] countCarrera = {0,0,0,0,0};
-        int[] countSemestre = {0,0,0,0,0,0,0,0,0,0};
-        
-        //carreras = {"IME", "IMA", "IAS","ITS","IMT"};
-        //semestres = {"Primero","Segundo","Tercero","Cuarto","Quinto","Sexto","Septimo","Octavo","Noveno","Decimo"};
-        
-        try{
-            Connection con = Conexion.getConexion();
-            ps = con.prepareStatement("SELECT carrera, semestre FROM alumnos");
-            rs = ps.executeQuery();
-            
-            while(rs.next()){
-                //Obtener textos de registros
-                txtCarrera = rs.getString("carrera");
-                txtSemestre = rs.getString("semestre");
-            
-                //Obtener elemento de JForm
-                DefaultComboBoxModel<String> carrera = (DefaultComboBoxModel<String>) cm_carrera.getModel();
-                DefaultComboBoxModel<String> semestre = (DefaultComboBoxModel<String>) cm_semestre.getModel();
+    private void cargarEstadisticas() {
+    // Variables de conexión
+    PreparedStatement ps = null;
+    ResultSet rs = null;
 
-                //En base al registro, obtener indice de item
-                indiceCarrera = carrera.getIndexOf(txtCarrera);
-                indiceSemestre = semestre.getIndexOf(txtSemestre);
-            
-                countCarrera[indiceCarrera]++;
-                countSemestre[indiceSemestre]++;
-            }
-        }catch(SQLException e){
-            JOptionPane.showMessageDialog(null, e.toString());
+    // Variables JComboBox
+    DefaultComboBoxModel<String> carreraModel = (DefaultComboBoxModel<String>) cm_carrera.getModel();
+    DefaultComboBoxModel<String> semestreModel = (DefaultComboBoxModel<String>) cm_semestre.getModel();
+
+    // Contadores
+    int[] countCarrera = {0, 0, 0, 0, 0};
+    int[] countSemestre = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    try {
+        Connection con = Conexion.getConexion();
+        ps = con.prepareStatement("SELECT carrera, semestre FROM alumnos");
+        rs = ps.executeQuery();
+
+        while (rs.next()) {
+            // Obtener textos de registros
+            String txtCarrera = rs.getString("carrera");
+            String txtSemestre = rs.getString("semestre");
+
+            // Obtener índices de elementos en JComboBox
+            int indiceCarrera = carreraModel.getIndexOf(txtCarrera);
+            int indiceSemestre = semestreModel.getIndexOf(txtSemestre);
+
+            countCarrera[indiceCarrera]++;
+            countSemestre[indiceSemestre]++;
         }
-        
-        //Imprimir Graficas
-        
-        //SEMESTRES
-        DefaultPieDataset datos = new DefaultPieDataset();
-        for(int i = 0; i < 10; i++){
-            datos.setValue("Semestre " + (i+1), countSemestre[i]);
+    } catch (SQLException e) {
+        JOptionPane.showMessageDialog(null, e.toString());
+    } finally {
+        // Cerrar recursos (PreparedStatement y ResultSet)
+        try {
+            if (ps != null) ps.close();
+            if (rs != null) rs.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-        
-        JFreeChart grafico_circular = ChartFactory.createPieChart(
-                "Alumnos Por Semestre", 
-                datos, 
-                true, 
-                true, 
-                false);
-        
-        ChartPanel panel = new ChartPanel(grafico_circular);
-        panel.setMouseWheelEnabled(true);
-        panel.setPreferredSize(new Dimension(500,500));
-        
-        semestre_panel.setLayout(new BorderLayout());
-        semestre_panel.add(panel,BorderLayout.NORTH);
-        
-        ///////////////////////////////////////////////////////
-        
-        //CARRERAS
-        DefaultPieDataset datos2 = new DefaultPieDataset();
-        
-        datos2.setValue("IME", countCarrera[0]);
-        datos2.setValue("IMA", countCarrera[1]);
-        datos2.setValue("IAS", countCarrera[2]);
-        datos2.setValue("ITS", countCarrera[3]);
-        datos2.setValue("IMT", countCarrera[4]);
-        
-        JFreeChart grafico_circular2 = ChartFactory.createPieChart(
-                "Carreras Seleccionadas Por Alumnos", 
-                datos2, 
-                true, 
-                true, 
-                false);
-        
-        ChartPanel panel2 = new ChartPanel(grafico_circular2);
-        panel2.setMouseWheelEnabled(true);
-        panel2.setPreferredSize(new Dimension(500,500));
-        
-        carrera_panel.setLayout(new BorderLayout());
-        carrera_panel.add(panel2,BorderLayout.NORTH);
-        
-        pack();
-        repaint();
-        
     }
+
+    // Actualizar gráficas
+    actualizarGrafica("Alumnos Por Semestre", countSemestre, semestre_panel);
+    actualizarGrafica("Carreras Seleccionadas Por Alumnos", countCarrera, carrera_panel);
+
+    // Repintar el JFrame (puede no ser necesario dependiendo del contexto)
+    pack();
+    repaint();
+}
+
+private void actualizarGrafica(String titulo, int[] datos, JPanel panel) {
+    DefaultPieDataset dataset = new DefaultPieDataset();
+    for (int i = 0; i < datos.length; i++) {
+        dataset.setValue("Elemento " + (i + 1), datos[i]);
+    }
+
+    JFreeChart grafico = ChartFactory.createPieChart(
+            titulo,
+            dataset,
+            true,
+            true,
+            false);
+
+    ChartPanel chartPanel = new ChartPanel(grafico);
+    chartPanel.setMouseWheelEnabled(true);
+    chartPanel.setPreferredSize(new Dimension(500, 500));
+
+    panel.removeAll();  // Limpiar el panel antes de agregar el nuevo gráfico
+    panel.setLayout(new BorderLayout());
+    panel.add(chartPanel, BorderLayout.NORTH);
+}
+
     
     /**
      * @param args the command line arguments
